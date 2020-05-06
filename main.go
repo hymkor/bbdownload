@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,13 +12,21 @@ import (
 )
 
 func download(url string) ([]byte, error) {
+	log.Printf("GET %s\n", url)
 	resp, err := http.Get(url)
 	if err != nil {
+		log.Println(err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	return ioutil.ReadAll(resp.Body)
+	bin, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+	log.Println(resp.Status)
+	return bin, err
 }
 
 var rxAnchor = regexp.MustCompile(`(?si)<a[^>]+href="([^"]+)"[^>]*>(.*?)</a>`)
@@ -48,8 +57,6 @@ func mains(args []string) error {
 				subUrlString := subUrl.String()
 				switch path.Ext(subUrl.Path) {
 				case ".zip", ".bz2", ".gz":
-					fmt.Printf("%s ...", subUrlString)
-
 					arcbin, err := download(subUrlString)
 					if err != nil {
 						return err
@@ -59,15 +66,11 @@ func mains(args []string) error {
 					ioutil.WriteFile(fname, arcbin, 0666)
 					fmt.Println("done.")
 					downloadCount++
-					break
-				default:
-					fmt.Printf("ignore %s\n", subUrlString)
-					break
 				}
 			}
 		}
 		if downloadCount <= 0 {
-			fmt.Println(baseHtml)
+			log.Println(baseHtml)
 		}
 	}
 	return nil
